@@ -1,9 +1,9 @@
 name: Quarto Publish
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  workflow_dispatch:
+  push:
+    branches: main
 
 jobs:
   build-deploy:
