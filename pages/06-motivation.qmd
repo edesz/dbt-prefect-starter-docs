@@ -1,0 +1,47 @@
+---
+Title: Motivation
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Motivation for this project
+
+## A simple starting point
+
+Getting started with a [new project using dbt](https://docs.getdbt.com/docs/local/about-local?version=2) often involves more setup than actual model development. A beginner user may need to read through documentation for dbt, decide how to manage Python environments, orchestration, and a data warehouse before writing a dbt model. This project provides a working starting point that brings these pieces together in a small, understandable structure.
+
+The goal is to make it easy to get up and running without having to first go through documentation to understand where and when things need to happen. Common tasks have clear entry points. The project structure stays close enough to dbt best practices for [structure](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview?version=2) and [style](https://docs.getdbt.com/best-practices/how-we-style/0-how-we-style-our-dbt-projects?version=2) that the organization of the project is largely self-documenting.
+
+The user can quickly start running a dbt pipeline while exploring the project structure or looking up concepts in the extensive dbt documentation.
+
+## A reproducible local development environment
+
+The template also provides a foundation for local development in a reproducible manner
+
+1. Python virtual environments are used to make the project's dependencies explicit with a [modern environment management tool like Pixi](https://www.kdnuggets.com/pixi-a-smarter-way-to-manage-python-environments) used by default
+2. DuckDB provides a local, file-based analytical database without requiring the setup of a cloud data warehouse account
+3. Prefect Cloud provides an orchestration layer that can run individual dbt commands or sequences of commands, giving the project useful but lightweight workflow capabilities such as real-time monitoring and observability in a centralised UI out of the box without requiring a large orchestration platform
+4. Pre-defined [`make` rules](https://www.gnu.org/software/make/) provide simple entry points for common dbt tasks, making it easy to return to a project later, re-run a workflow, or iterate quickly during model development.
+
+Together, these pieces provide much of the supporting infrastructure needed for a local dbt project while keeping the focus on developing and testing data models. Being able to focus on dbt data modeling and not on project administration was the most important reason for creating this starter project.
+
+## Follow conventions without over-engineering
+
+The project aims to follow established dbt practices without being too opinionated. It provides a sensible structure, conventions, and workflow, but documents the reasoning behind its choices so that users can understand what has been included and decide what they want to keep, change, or remove. The intention is not to create another abstraction layer around dbt, but to provide a small project structure in which the important details remain visible and easy to find.
+
+DuckDB, dbt, Prefect, Python, and other development tools can therefore be used as building blocks instead of as constraints on how a dbt project should be organized in order to follow dbt's own published best practices.
+
+## A starting point, not a framework - Adapt as required
+
+Note that nothing in this template is intended to be binding.
+
+It is meant to be a lightweight starting structure that can be adapted to suit the needs of an individual project. The hope is that it provides a useful take-off point for local dbt projects using DuckDB and Prefect Cloud, allowing you (the user) to focus on quickly developing and iterating on data models.
+
+As a project grows, the structure and tooling can be changed as needed.

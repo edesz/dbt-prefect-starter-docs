@@ -1,0 +1,146 @@
+---
+Title: Document and Test dbt Models
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-20
+language:
+  title-block-published: "Last Updated"
+---
+
+# Documenting and Testing dbt Models
+
+Data models are easier to use and maintain when their purpose, columns, and expected behavior are clearly documented and tested. In this starter project, documentation and testing are treated as part of authoring a model rather than as separate tasks performed after the model has been built.
+
+The template uses dbt documentation, column-level tests, and `dbt-checkpoint` hooks to make these practices consistent across the project. The following conventions describe how models and sources are documented and tested in this starter project.
+
+## Documentation Requirements
+
+Each model and source should provide enough metadata for another developer or data consumer to understand what the data represents.
+
+### Model Descriptions
+
+Each model should have a top-level description directly below its name in the schema configuration. The description should explain the purpose of the model and, where useful, its grain and the type of transformation it performs.
+
+For example
+
+```yaml
+models:
+  - name: _stg_my_model__records
+    description: '{{ doc("my_model_description") }}'
+```
+
+### Column Descriptions
+
+Every column should have a description in the relevant `schema.yml` or `sources.yml` file. Column descriptions are particularly useful for fields whose meaning cannot be understood from the column name alone.
+
+For source definitions, document the columns provided by the raw source. For models, document the columns produced by the transformation.
+
+## Using Markdown for Model Documentation
+
+Long descriptions can make YAML configuration files difficult to read. For this reason, this template stores model and column descriptions in Markdown files and references them from the corresponding YAML files using dbt's `docs` blocks.
+
+For staging models, documentation is stored under
+
+```text
+models/docs/staging/<model_name>.md
+```
+
+The same pattern can be used for intermediate and mart models
+
+```text
+models/docs/intermediate/<model_name>.md
+models/docs/marts/<model_name>.md
+```
+
+### Example Markdown File
+
+For example, the documentation for `_stg_my_model__records` could be stored in
+
+```text
+models/docs/staging/_stg_my_model__records.md
+```
+
+with the following contents
+
+```markdown
+{% docs my_model_description %}
+
+This staging model cleanses and standardizes raw customer records from
+the core transactional database. It deduplicates rows based on the
+unique ingestion timestamp.
+
+{% enddocs %}
+
+{% docs column_row_id %}
+
+The unique, auto-incrementing primary key for each staging record.
+
+{% enddocs %}
+```
+
+The named documentation blocks can then be referenced from the model's `schema.yml`
+
+```yaml
+version: 2
+
+models:
+  - name: _stg_my_model__records
+    description: '{{ doc("my_model_description") }}'
+
+    columns:
+      - name: row_id
+        description: '{{ doc("column_row_id") }}'
+```
+
+This keeps the schema configuration concise while allowing longer descriptions to be maintained separately in Markdown.
+
+## Testing Requirements
+
+Documentation describes what a model and its columns are expected to represent. Tests provide a way to validate that the resulting data continues to meet those expectations.
+
+### Column-Level Tests
+
+Columns should have appropriate tests to validate their expected properties. Depending on the column, this may include tests for uniqueness, null values, accepted values, relationships, or other data-quality expectations.
+
+The appropriate tests depend on the characteristics of the data. Not every column will require the same type of test, but important assumptions about the data should be represented as tests wherever practical.
+
+### Top-Level Structural Tests
+
+This project also uses structural checks to ensure that the expected columns are present in a model. This helps identify changes to an upstream source or transformation that could otherwise propagate to downstream models without being immediately noticed.
+
+These checks complement column-level tests. The column-level tests validate the values in individual columns, while structural checks validate that the expected model structure is still present.
+
+### Documenting Tests
+
+Tests should also be given descriptive names and descriptions. Test names use lowercase `snake_case`, with underscores separating words, and should clearly describe the condition being tested.
+
+For example, the following test verifies that values in the `year` column are 2025 or later
+
+```yaml
+- name: year
+  description: 'Year of the customer record'
+  data_tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        name: year_must_be_2025_or_later
+        description: "Ensures the year is 2025 or later."
+        arguments:
+          min_value: 2025
+```
+
+A descriptive test name makes failures easier to interpret, while the test description documents the expectation being enforced.
+
+## Automated Enforcement with `pre-commit` and `dbt-checkpoint`
+
+The project uses `pre-commit` with `dbt-checkpoint` to automatically check that these conventions are followed. The configured hooks cover areas such as model and source descriptions, column documentation, model tests, source tests, naming conventions, and other dbt project requirements.
+
+The starter project includes nearly 20 `dbt-checkpoint` hooks. These checks run locally through the project's `lint` workflow and can identify missing documentation or tests before changes are committed. They can also be called manually using
+
+```bash
+make lint
+```
+
+This provides an automated layer of consistency around the conventions described in this section. Rather than relying entirely on developers to remember each requirement, the project uses automated checks to catch common omissions during development.

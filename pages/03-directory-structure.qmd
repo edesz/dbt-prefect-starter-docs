@@ -1,0 +1,213 @@
+---
+Title: Directory Structure
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Directory Structure
+
+This section covers the structure of the files and folders in this project, separated by their purpose.
+
+The first five groups below implement the dbt functionality required to use this project
+
+1. [dbt Project Files and Folders](#dbt-projects-files-folders)
+2. [Makefile and Ad-Hoc dbt Command Runner](#makefile-and-ad-hoc-dbt-command-runner)
+3. [Orchestration with Prefect](#prefect-orchestration-with-prefect)
+4. [Python Environment Configuration](#python-environment-configuration)
+5. [Continuous Integration](#continuous-integration)
+6. [Version Control](#version-control)
+7. [Lint Checks](#lint-checks)
+
+Contents in the last two groups are only for managing and for creating documentation for the repository on Gitgub
+
+1. [Community and Github Repository Administration](#community-repo-admin)
+2. [Github Project Documentation](#repo-documentation)
+
+## dbt Project Files and Folders {#dbt-projects-files-folders}
+
+The contents of this starter template related to a dbt project come from running `dbt init`.
+
+```bash
+.
+├── analyses
+│   ├── check_parking_occupancy_records.sql
+│   └── .gitkeep
+├── dbt-outputs
+│   └── .gitkeep
+├── dbt_project.yml
+├── dependencies.yml
+├── .gitignore
+├── macros
+│   └── .gitkeep
+├── models
+│   ├── docs
+│   │   ├── intermediate
+│   │   │   ├── .gitkeep
+│   │   │   └── _int_placeholder.md
+│   │   ├── marts
+│   │   │   ├── _fct_placeholder.md
+│   │   │   └── .gitkeep
+│   │   └── staging
+│   │       ├── .gitkeep
+│   │       └── _stg_postgres_data_park_occupancy.md
+│   ├── intermediate
+│   │   ├── .gitkeep
+│   │   ├── _int_placeholder__models.yml
+│   │   └── _int_placeholder.sql
+│   ├── marts
+│   │   ├── _fct_placeholder__models.yml
+│   │   ├── _fct_placeholder.sql
+│   │   └── .gitkeep
+│   └── staging
+│       ├── .gitkeep
+│       └── stg_open_data_park_occupancy
+│           ├── .gitkeep
+│           ├── _stg_open_data_park_occupancy__models.yml
+│           ├── _stg_open_data_park_occupancy__records.sql
+│           └── _stg_open_data_park_occupancy__sources.yml
+├── README.md
+├── seeds
+│   └── .gitkeep
+├── snapshots
+│   └── .gitkeep
+└── tests
+    └── .gitkeep
+```
+
+## Makefile and Ad-Hoc dbt Command Runner {#makefile-and-ad-hoc-dbt-command-runner}
+
+```bash
+.
+├── Makefile
+└── run_sql_query.py
+```
+
+## Orchestration with Prefect {#prefect-orchestration}
+
+### Prefect Tasks and Flows
+
+```bash
+.
+├── dbt_orchestrator.py
+└── src
+    ├── __init__.py
+    └── prefect_resources.py
+```
+
+### Prefect Unit Tests
+
+```bash
+.
+├── .coveragerc
+├── pytest.ini
+└── src
+    ├── __init__.py
+    └── tests
+        ├── conftest.py
+        ├── test-logs
+        │   └── .gitkeep
+        ├── test_prefect_flows.py
+        └── test_prefect_tasks.py
+```
+
+## Python Environment Configuration {#python-environment-configuration}
+
+```bash
+.
+├── pyproject.toml
+└── resources
+    └── py-env-tools
+        ├── pixi
+        │   ├── .gitignore
+        │   ├── Makefile
+        │   └── pyproject.toml
+        └── tox
+            ├── standalone
+            │   ├── .gitignore
+            │   ├── Makefile
+            │   └── tox.ini
+            └── using-uv
+                ├── .gitignore
+                ├── INI
+                │   ├── Makefile
+                │   └── tox.ini
+                ├── pyproject.toml
+                └── TOML
+                    ├── Makefile
+                    └── tox.toml
+```
+
+:::{.callout-note collapse="true"}
+### Files Needed if Replacing Pixi with tox
+
+If you prefer to switch the default choice of Pixi for managing Python environments, then the alternative option provided in this starter project is to use [tox](https://tox.wiki/en/stable/index.html) and [uv](https://docs.astral.sh/uv/) with the [`tox-uv` plugin](https://github.com/tox-dev/tox-uv). In this case, it is recommended to use `using-uv` > `TOML`, since the [`INI` version is deprecated](https://tox.wiki/en/stable/reference/config.html#discovery-and-file-types). The following files would be required
+
+1. `py-env-tools/tox/using-uv/.gitignore`
+2. `py-env-tools/tox/using-uv/pyproject.toml`
+3. `py-env-tools/tox/using-uv/TOML/Makefile`
+4. `py-env-tools/tox/using-uv/TOML/tox.toml`
+:::
+
+## Continuous Integration {#continuous-integration}
+
+```bash
+.
+├── .github
+│   └── workflows
+│       └── main.yml
+└── resources
+    ├── cloud-dbs-adhoc-sql
+    │   ├── bigquery
+    │   │   ├── .github
+    │   │   │   └── workflows
+    │   │   │       └── deploy-docs.yml
+    │   └── snowflake
+    │       ├── .github
+    │       │   └── workflows
+    │       │       └── deploy-docs.yml
+    └── duckdb
+        └── .github
+            └── workflows
+                └── deploy-docs.yml
+```
+
+## Version Control {#version-control}
+
+```bash
+.
+├── .gitignore
+```
+
+## Lint Checks {#lint-checks}
+
+```bash
+.
+├── .pre-commit-config.yaml
+├── .sqlfluff
+└── .sqlfluffignore
+```
+
+## Community and Github Repository Administration {#community-repo-admin}
+
+```bash
+.
+├── LICENSE.md
+├── resources
+│   └── community
+│       └── CODE_OF_CONDUCT.md
+└── robots.txt
+```
+
+## Github Repository Documentation {#repo-documentation}
+
+```bash
+.
+└── README.md
+```

@@ -1,0 +1,36 @@
+---
+Title: Welcome
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-19
+language:
+  title-block-published: "Last Updated"
+---
+
+# dbt Starter Template with DuckDB and Prefect
+
+*A lightweight, beginner-friendly starter template providing a clear foundation for structuring a dbt project.*
+
+This template is designed for quickly starting local development of a [dbt](https://www.getdbt.com/) project and it stays close to [best practices for structure and style](https://docs.getdbt.com/best-practices?version=2). [DuckDB](https://duckdb.org/) is used as a file-based data warehouse and [Prefect](https://www.prefect.io/) is used for dbt command orchestration.
+
+The folder structure stays close to the [default dbt project structure after initialising a dbt project](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview?version=2#guide-structure-overview) so user customisations should be easy to implement.
+
+## Highlights
+
+1. Project entry points configured with simple Makefile for fast data model building and testing with dbt
+2. Modern Python virtual environment management using [Pixi](https://pixi.prefix.dev/latest/) for reproducibility
+3. Lightweight but powerful Python-based [unit-tested](https://docs.prefect.io/v3/how-to-guides/workflows/test-workflows) orchestration using Prefect
+4. Duckdb, an [OLAP database](https://en.wikipedia.org/wiki/Online_analytical_processing) solution, serving as the [modern data warehouse](https://www.getdbt.com/discover/understanding-data-warehouses) with an analytics focus and zero infrastructure cost, complex configuration, or cloud credentials required
+5. Github Actions configured to run tests, [dbt project linting](https://github.com/dbt-checkpoint/dbt-checkpoint) with [pre-commmit](https://pre-commit.com/) and [deployment of dbt documentation to Github Pages](https://stellans.io/automate-dbt-docs-to-github-pages-in-15-minutes/)
+6. Starter staging layer with [an open dataset](https://open.toronto.ca/dataset/parking-occupancy/) loaded [from a CSV using DuckDB](https://duckdb.org/docs/lts/data/csv/overview)
+7. Source code in the github repository [dbt_duckdb_prefect_starter](https://github.com/edesz/dbt_prefect_duckdb_starter)
+
+:::{.callout-tip}
+## Getting Started
+
+Start building now with [Quickstart](./pages/02-quickstart.qmd).
+:::

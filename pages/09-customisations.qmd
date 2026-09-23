@@ -1,0 +1,470 @@
+---
+Title: Customisations
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Customisations
+
+Customisations provide a way to adapt this template to your specific requirements and constraints. This section describes a few common customisations that can be applied to the starter project
+
+1. [Adding Secret Variables to Project Files](#adding-secrets)
+2. [Changing Materialization for the Staging Layer](#change-staging-materialization)
+3. [Replacing DuckDB with a Cloud Data Warehouse](#cloud-data-warehouse)
+4. [Replacing Pixi with tox + uv](#replace-ub-with-tox-uv)
+
+Additional entries may be added here over time.
+
+## Adding Secret Variables to Project Files {#adding-secrets}
+
+The project does not currently require environment variables in `dbt_project.yml`. If your project needs to access secrets, such as cloud storage credentials, environment variables can be used to keep those values outside the project files.
+
+There are several ways to provide environment variables to dbt. The approach below uses a `.env` file as the source of the variables and then loads those variables into the environment before dbt runs. The example uses DuckDB's Secrets Manager to provide credentials for accessing an AWS S3 bucket. DuckDB supports S3 secrets through `CREATE SECRET`, including credentials supplied through `KEY_ID`, `SECRET`, `ACCOUNT_ID`, and `REGION`.
+
+:::{.callout-warning}
+## Security Note
+
+Do not commit credentials or other secrets to version control. If you use a `.env` file containing secrets, add it to `.gitignore`.
+:::
+
+### Adding a *.env* File
+
+Create a `.env` file in your home directory (`~/.env`) and add the required credentials
+
+```bash
+AWS_ACCESS_KEY_ID=<my-aws-access-key>
+AWS_SECRET_ACCESS_KEY=<my-aws-secret-access-key>
+AWS_ACCOUNT_ID=<my-aws-account-id>
+AWS_REGION=<my-aws-region>
+```
+
+The `.env` file is only the storage location for these values. The variables must be loaded into the process environment before dbt or DuckDB can access them.
+
+### Modifying *dbt_project.yml*
+
+Add an `on-run-start` hook to `dbt_project.yml` that creates a DuckDB S3 secret using the environment variables
+
+```yaml
+on-run-start:
+  - "CREATE OR REPLACE SECRET (
+      TYPE S3,
+      KEY_ID '{{ env_var('AWS_ACCESS_KEY_ID') }}',
+      SECRET '{{ env_var('AWS_SECRET_ACCESS_KEY') }}',
+      ACCOUNT_ID '{{ env_var('AWS_ACCOUNT_ID') }}',
+      REGION '{{ env_var('AWS_REGION') }}'
+    );"
+```
+
+The `env_var()` function retrieves the corresponding values from the environment in which dbt is running. DuckDB then uses those values when creating the S3 secret.
+
+### Loading *.env* Variables for Ad-Hoc dbt Commands
+
+For ad-hoc dbt commands, the variables can be loaded from `~/.env` before the dbt command is executed. In `pyproject.toml`, modify the `dbt-cmd` task for the `dbt` feature so that the `.env` variables are loaded into the command environment.
+
+For example
+
+```toml
+dbt-cmd = { cmd = """
+   env $(cat ~/.env | xargs) dbt {{ command }}
+   """, description="""\
+   Execute adhoc dbt command\
+   """, args = ["command"], cwd = ".", default-environment = "dbt" }
+```
+
+The existing `dbt-cmd` task can then continue to be invoked through Pixi
+
+```bash
+pixi run dbt-cmd "debug"
+```
+
+This approach makes the variables available to dbt for the duration of the command without requiring them to be defined globally in the user's shell.
+
+### Loading *.env* Variables for Prefect
+
+The Prefect orchestration flow runs dbt commands from Python rather than directly from the shell. For this workflow, the `python-dotenv` package is used to load the `.env` file into the Python process environment. This package is already present in the `orchestration` feature in `pyproject.toml`. Additionally, the `.env` file at `~/Documents/.env` is already loaded by the Python script by default
+
+```python
+# dbt_orchestrator.py
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+PROJ_ROOT = Path.cwd()
+
+assert load_dotenv(
+    dotenv_path=PROJ_ROOT.parents[1] / "Documents" / ".env", override=False
+)
+```
+
+So, the only modification required is to change the default location of the `.env` file to `~/.env`. To do this, replace
+
+```python
+dotenv_path=PROJ_ROOT.parents[1] / "Documents" / ".env", override=False
+```
+
+by 
+
+```python
+dotenv_path=Path.home() / ".env", override=False
+```
+
+`load_dotenv()` reads the variables from the specified `.env` file and adds them to `os.environ`, making them available to the dbt commands executed by the Prefect flow. Note that, by default, existing environment variables are not overwritten.
+
+## Changing Materialization for the Staging Layer {#change-staging-materialization}
+
+By default, the project's `dbt_project.yml` configures models in the staging layer to be materialized as views
+
+```yaml
+models:
+  dbt_prefect_starter:
+    staging:
+      +materialized: view
+```
+
+If, for example, you want the staging layer to write its output to a compressed Parquet file in an AWS S3 bucket, you can change the materialization configuration to
+
+```yaml
+models:
+  dbt_prefect_starter:
+    staging:
+      +materialized: external
+      +format: 'parquet'
+      +location: "s3://{{ env_var('AWS_BUCKET_NAME') }}/path/to/file/my_file.parquet.gzip"
+      +options:
+        overwrite: true
+        compression: 'gzip'
+```
+
+This configuration uses the `external` materialization to write the model output as a Parquet file and enables gzip compression. The S3 location is constructed using the `AWS_BUCKET_NAME` environment variable.
+
+:::{.callout-caution}
+The S3 configuration requires credentials to be available to DuckDB when the model runs. Follow the [instructions for loading secrets as environment variables using a `.env` file](#adding-secrets) to configure the required AWS credentials.
+:::
+
+## Replacing DuckDB with Cloud Data Warehouse {#cloud-data-warehouse}
+
+This section covers steps to replace DuckDB with a data warehouse from a cloud provider.
+
+Start by removing the following line from the `.gitignore` file
+
+```text
+local_warehouse.duckdb
+```
+
+We will walk through the use of the following warehouses
+
+1. Snowflake
+2. BigQuery
+
+Two types of changes will be covered
+
+1. Project Changes
+   - these are changes to be made locally
+2. Storage and Warehouse Changes
+   - these are changes to be made at the warehouse and/or storage level
+
+### Snowflake
+
+#### Project Changes
+
+1. Create a `.env` fileand set Github Secrets with the following
+   ```text
+   SNOWFLAKE_USER_NAME=...
+   SNOWFLAKE_USER_PASSWORD=...
+   SNOWFLAKE_ACCOUNT_LOCATION=...
+   SNOWFLAKE_WAREHOUSE=...
+   SNOWFLAKE_DATABASE=...
+   SNOWFLAKE_SCHEMA=...
+   SNOWFLAKE_ROLE=...
+   ```
+2. Replace the `profiles.yml` in the root directory of the project with
+   ```text
+   resources/cloud-dbs-adhoc-sql/snowflake/profiles.yml
+3. In `pyproject.toml` replace
+   ```text
+   duckdb = ">=1.5.5, <2"
+   dbt-duckdb = ">=1.11.0, <2"
+   ```
+
+   by
+
+   ```text
+   snowflake-connector-python = "*"
+   python-dotenv = "*"
+   ```
+4. Replace the Python runner script `run_sql_query.py` in the root of the directory with the script from the following location
+   ```text
+   resources/cloud-dbs-adhoc-sql/snowflake/run_sql_query.py
+   ```
+5. Replace the model `sources.yml` from
+   ```text
+   models/staging/stg_open_data_park_occupancy/_stg_*__sources.yml
+   ```
+
+   with
+   ```text
+   resources/cloud-dbs-adhoc-sql/snowflake/_stg_*__sources.yml
+   ```
+6. Replace the Github actions file from
+   ```text
+   ./.github/workflows/deploy-docs.yml
+   ```
+
+   with
+   ```text
+   resources/cloud-dbs-adhoc-sql/snowflake/.github/workflows/deploy-docs.yml
+   ```
+
+#### Storage and Warehouse Changes
+
+We will assume the raw data is stored in a private Amazon S3 bucket. Snowflake will return an Access Denied error because it has no credentials to authenticate against your private S3 bucket. To fix this, you must explicitly configure authentication between Snowflake and AWS.
+
+Snowflake highly recommends using a secure Storage Integration object (via an AWS IAM Role) rather than hardcoding AWS keys.
+
+Below are the changes required to make your private S3 bucket accessible
+
+1. Go to your AWS IAM Console, create a new IAM Role in AWS and select Custom Trust Policy and paste a placeholder block (we will update this later)
+   ```json   
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": { "AWS": "*" },
+         "Action": "sts:AssumeRole"
+       }
+     ]
+   }
+   ```
+2. Attach an IAM policy to this role granting permission to access your private S3 bucket
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "s3:GetObject",
+           "s3:GetObjectVersion"
+         ],
+         "Resource": "arn:aws:s3:::your-bucket-name/path/to/csv/*"
+       },
+       {
+         "Effect": "Allow",
+         "Action": [
+           "s3:ListBucket",
+           "s3:GetBucketLocation"
+         ],
+         "Resource": "arn:aws:s3:::your-bucket-name"
+       }
+     ]
+   }
+   ```
+3. Copy your newly created Role ARN (e.g., `arn:aws:iam::123456789012:role/snowflake_s3_role`)
+4. Create a Storage Integration in Snowflake by runnig this SQL command using an `ACCOUNTADMIN` role to establish a secure link with AWS
+   ```sql
+   CREATE OR REPLACE STORAGE INTEGRATION s3_private_integration
+     TYPE = EXTERNAL_STAGE
+     STORAGE_PROVIDER = 'S3'
+     ENABLED = TRUE
+     STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake_s3_role'
+     STORAGE_ALLOWED_LOCATIONS = ('s3://your-bucket-name/path/to/csv/')
+   ```
+5. To prevent unauthorized access, you must next establish the trust relationship between AWS and Snowflake. In order to do this, you must bind your specific Snowflake account identifier to the AWS IAM Role. Run this command in Snowflake to fetch your unique properties
+   ```sql
+   DESCRIBE INTEGRATION s3_private_integration
+   ```
+
+   and record the values for `STORAGE_AWS_IAM_USER_ARN` and `STORAGE_AWS_EXTERNAL_ID`.
+6. Go back to your AWS IAM Role, click Trust Relationships, edit it, and update it with the retrieved values
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": {
+           "AWS": "<STORAGE_AWS_IAM_USER_ARN_VALUE>"
+         },
+         "Condition": {
+           "StringEquals": {
+             "sts:ExternalId": "<STORAGE_AWS_EXTERNAL_ID_VALUE>"
+           }
+         },
+         "Action": "sts:AssumeRole"
+       }
+     ]
+   }
+   ```
+7. Create an existing external stage that maps to your cloud bucket URL where the CSV is kept
+   ```sql
+   CREATE OR REPLACE STAGE my_databasepark_occupy_db.raw_schema.raw_park_occupancy_stage
+     URL = 's3://your-bucket-name/path/to/csv/'
+     STORAGE_INTEGRATION = s3_private_integration; -- Added authentication
+   ```
+8. Execute the macro to render and build the object inside Snowflake
+   ```bash
+   pixi run prefect-dbt "run-operation stage_external_sources"
+   ```
+9. Once staged, it can be queried like any native dbt source. You can run your dbt models as normal
+   ```bash
+   pixi run prefect-dbt "run"
+   ```
+
+### BigQuery
+
+#### Project Changes
+
+1. Create a `.env` file locally and set Github Secrets with the following
+   ```text
+   BIGQUERY_PROJECT_ID=...
+   BIGQUERY_DATASET=...
+   BIGQUERY_LOCATION=...
+   GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service_account_key.json
+   ```
+
+   In Github Secrets, for the `GOOGLE_APPLICATION_CREDENTIALS` variable paste the entire raw text content of your `service_account.json` file here.
+2. Replace dbt's `profiles.yml` in the root directory of the project with
+   ```text
+   resources/cloud-dbs-adhoc-sql/bigquery/profiles.yml
+3. In `pyproject.toml` replace
+   ```text
+   duckdb = ">=1.5.5, <2"
+   dbt-duckdb = ">=1.11.0, <2"
+   ```
+
+   by
+
+   ```text
+   google-cloud-bigquery = "*"
+   python-dotenv = "*"
+   ```
+4. Replace the Python runner script `run_sql_query.py` in the root of the directory with the script from the following location
+   ```text
+   resources/cloud-dbs-adhoc-sql/bigquery/run_sql_query.py
+   ```
+5. Replace the model `sources.yml` from
+   ```text
+   models/staging/stg_open_data_park_occupancy/_stg_*__sources.yml
+   ```
+
+   with
+   ```text
+   resources/cloud-dbs-adhoc-sql/bigquery/_stg_*__sources.yml
+   ```
+6. Replace the Github actions file from
+   ```text
+   .github/workflows/deploy-docs.yml
+   ```
+
+   with
+   ```text
+   resources/cloud-dbs-adhoc-sql/bigquery/.github/workflows/deploy-docs.yml
+   ```
+
+#### Storage and Warehouse Changes
+
+We will assume the raw data is stored in a private GCS bucket. Because you are using service account authentication via your GOOGLE_APPLICATION_CREDENTIALS environment variable, the only requirement is to grant that specific service account read access to your private GCS bucket. 
+
+Below are the changes required to do this
+
+1. Identify your Service Account email by opening your `service-account.json` file specified in your `GOOGLE_APPLICATION_CREDENTIALS` environment variable and look for the `client_email` key. It will look like this
+   ```text
+   "client_email": "your-service-account@://gserviceaccount.com"
+   ```
+2. Grant permissions on the private GCS bucket by assigning the Storage Object Viewer (`roles/storage.objectViewer`) IAM role to this service account on the private bucket. This gives BigQuery the clearance it needs to scan files inside the bucket. This can be done as follows
+   - Using the Google Cloud Console
+     - Go to the [Google Cloud Storage Console](https://console.cloud.google.com/storage/browser)
+     - Click on your private bucket name (your-toronto-opendata-bucket)
+     - Select the Permissions tab at the top
+     - Click Grant Access (or Add Principal)
+     - In the New principals field, paste your service account's client_email
+     - In the Select a role dropdown, select Cloud Storage -> Storage Object Viewer
+     - Click Save
+   - using the command line
+     ```bash
+     gcloud storage buckets add-iam-policy-binding \
+         gs://<your-gcs-bucket-name> \
+         --member="serviceAccount:your-service-account@://gserviceaccount.com" \
+         --role="roles/storage.objectViewer"
+3. Once the IAM policy update has propagated, BigQuery can now securely access your private GCS bucket files using the credentials provided in your `.env` file. You can proceed to deploy and run your external tables normally
+   ```bash
+   pixi run prefect-dbt "run-operation stage_external_sources"
+4. Run your dbt models
+   ```bash
+   pixi run prefect-dbt "run"
+   ```
+
+## Replacing Pixi with tox + uv {#replace-ub-with-tox-uv}
+
+Like Pixi, [uv is a modern and fast Python package manager](https://testdriven.io/blog/python-environments/) that is written in Rust. This project provides readymade configuration files for using uv with tox.
+
+First, move the appropriate files into place
+
+1. Delete the following files in the root directory of the project
+   - `pyproject.toml`
+   - `Makefile`
+   - `.gitignore`
+2. Move the following files into the root directory
+   - `resources/py-env-tools/tox/using-uv/TOML/tox.toml`
+   - `resources/py-env-tools/tox/using-uv/TOML/Makefile`
+   - `resources/py-env-tools/tox/using-uv/.gitignore`
+   - `resources/py-env-tools/tox/using-uv/pyproject.toml`
+
+:::{.callout-note}
+A backup copy of the deleted files required for using Pixi is available in the `resources` folder
+
+1. `resources/py-env-tools/pixi/pyproject.toml`
+2. `resources/py-env-tools/pixi/Makefile`
+3. `resources/py-env-tools/pixi/.gitignore`
+
+so if they are deleted they are not lost forever!
+:::
+
+Next, [install uv](https://docs.astral.sh/uv/#installation)
+
+```bash
+make uv-install-upgrade
+```
+
+which will run
+
+```bash
+pip3 install --upgrade uv
+```
+
+Next, [use uv to install tox using the tox-uv plugin](https://github.com/tox-dev/tox-uv#how-to-use)
+
+```bash
+make uv-install-tox
+```
+
+which runs
+
+```bash
+uv tool install tox --with tox-uv
+```
+
+Finally, create the [uv lockfile (`uv.lock`)](https://docs.astral.sh/uv/concepts/projects/sync/#creating-the-lockfile) using
+
+```bash
+uv lock
+```
+
+in order to pin dependencies in `uv.lock` but it does not pin Python package dependencies in `pyproject.toml`. This is similar to
+
+```bash
+pixi upgrade
+```
+
+which creates `pixi.lock` but also pins Python packages in `pyproject.toml`.
+
+Now, you can run `make` rules as normal, since [they have the same names](https://github.com/edesz/dbt_prefect_starter/blob/9764b710d712c9ec0ed88ce98e538613500af0c0/resources/py-env-tools/tox/using-uv/TOML/Makefile#L9-L38) as [those using Pixi](https://github.com/edesz/dbt_prefect_starter/blob/9764b710d712c9ec0ed88ce98e538613500af0c0/resources/py-env-tools/pixi/Makefile#L15-L50).

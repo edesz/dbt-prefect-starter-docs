@@ -1,0 +1,37 @@
+---
+Title: Citation
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-18
+language:
+  title-block-published: "Last Updated"
+---
+
+# Authors and Citation
+
+In order to cite this project in publications, please use the following citation.
+
+## Authors
+
+E. DeSouza. Maintainer.
+
+## BibTeX
+
+```bibtex
+@Manual{,
+  title = {A dbt starter project for DuckDB using Prefect orchestration.},
+  author = {E. DeSouza},
+  year = {2026},
+  note = {dbt project structure best practices, updated 2026-09-16},
+  keywords = {dbt, Prefect, DuckDB, dbt Project Template},
+  url = {https://github.com/edesz/dbt_prefect_duckdb_starter},
+}
+```
+
+## APA
+
+DeSouza, E. (2026). A dbt starter project for DuckDB using Prefect orchestration. (Version 0.1.0) [Computer software]. https://github.com/edesz/dbt_prefect_duckdb_starter

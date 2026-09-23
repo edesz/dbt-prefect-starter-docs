@@ -1,0 +1,36 @@
+---
+Title: Pre-Requisites
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Pre-Requisites
+
+## System
+
+Please install the following globally
+
+1. [Python](https://www.python.org/) ([installation](https://www.python.org/downloads/))
+2. [Pixi](https://pixi.prefix.dev/latest/) ([installation](https://pixi.prefix.dev/latest/installation/))
+3. [Git](https://git-scm.com/) ([installation](https://git-scm.com/install/))
+4. [Make](https://www.gnu.org/software/make/) ([installation](https://www.gnu.org/software/make/#download))
+5. Create an account on [Prefect Cloud](https://www.prefect.io/prefect/cloud#main)
+
+## dbt
+
+dbt dependencies are specified in `dependencies.yml`. Currently, this file contains [`dbt-expectations`]() as the only dependency
+
+```yaml
+packages:
+  - package: metaplane/dbt_expectations
+    version: 0.10.10
+```
+
+Please add additional dbt dependencies to this file as required.

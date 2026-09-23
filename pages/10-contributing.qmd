@@ -1,0 +1,24 @@
+---
+Title: Contributing
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Contributing
+
+This starter project is intentionally opinionated, but it is not intended to be definitive.
+
+The choices made here reflect what works for the project today and may change as dbt, its ecosystem, and our own understanding of best practices evolve. For example, `dbt-core` is installed as a Python package from [PyPI](https://pypi.org/project/dbt-core/), and the version used by the project will change over time as new releases become available. The [dbt core ecosystem is evolving](https://docs.getdbt.com/blog/dbt-core-v2-is-here?version=2.0&name=Fusion), and this project should evolve with it.
+
+The objective is to make it easier and faster to get started with dbt, work within a well-structured project, and have a basic but complete example that just runs to build from.
+
+If you have suggestions, encounter problems, or have found a better way to approach something, [pull requests](https://github.com/edesz/dbt_prefect_starter/pulls) and [issues](https://github.com/edesz/dbt_prefect_starter/issues) are strongly encouraged on the [repository on Github](https://github.com/edesz/dbt_prefect_starter).
+
+It would be great to hear what works for you, what doesn't, and what you think could make this starter project more useful.

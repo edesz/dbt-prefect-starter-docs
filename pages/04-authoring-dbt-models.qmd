@@ -1,0 +1,156 @@
+---
+Title: Authoring dbt Models
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-19
+language:
+  title-block-published: "Last Updated"
+---
+
+# Authoring dbt Models
+
+This starter project includes an example [staging](https://docs.getdbt.com/best-practices/how-we-structure/2-staging?version=2) model, along with boilerplate structure for [intermediate](https://docs.getdbt.com/best-practices/how-we-structure/3-intermediate?version=2) and [marts](https://docs.getdbt.com/best-practices/how-we-structure/4-marts?version=2) models. The example is intentionally small, but it is documented and tested so that it can serve as a starting point for building additional models.
+
+The goal of this section is not to provide a comprehensive introduction to dbt modeling. Instead, it describes how models are organized and named in this starter project and provides a starting point for adding your own models. For a more detailed explanation of dbt modeling concepts, refer to the [dbt documentation](https://docs.getdbt.com/docs/build/sql-models?version=2).
+
+## Staging Model
+
+The example staging model is located in
+
+```text
+models/staging/stg_open_data_park_occupancy/
+```
+
+The directory name uses underscores rather than dashes, per [dbt best practices for styling](https://docs.getdbt.com/best-practices/how-we-style/1-how-we-style-our-dbt-models?version=2#fields-and-model-names). This template uses descriptive directory and model names so that the purpose of a model can be understood from its location and name.
+
+The staging model retrieves raw parking lot occupancy readings from the [Toronto Open Data Portal](https://open.toronto.ca/dataset/parking-occupancy/). It is therefore named
+
+```text
+_stg_open_data_park_occupancy__records
+```
+
+The model name follows the convention used throughout this template and consists of four parts
+
+1. Leading underscore
+   - this distinguishes the model file from its supporting files
+2. Prefix (`stg`)
+   - this identifies the staging layer
+3. Model name (`open_data_park_occupancy`)
+   - this describes the data represented by the model
+4. Suffix (`records`)
+   - this describes the type of relation represented by the model
+
+The prefix and model name are separated by a single underscore, while the model name and suffix are separated by a double underscore
+
+```text
+_stg_open_data_park_occupancy__records
+│    │                       │    |
+│    │                       |    └── suffix 
+│    └── model name          |
+└── layer prefix             └── double underscore
+```
+
+The same general naming pattern is used for models in the other layers, with the prefix indicating the layer.
+
+## Supporting Files
+
+The staging model directory contains the model SQL file and two supporting YAML files
+
+1. a *[schema file](https://docs.getdbt.com/reference/resource-configs/schema?version=2)*, which documents and tests the model
+2. a *[sources file](https://docs.getdbt.com/docs/build/sources?version=2)*, which defines the raw data source
+
+### Schema File
+
+The schema file contains a top-level `models` key. Under the model definition, it provides the model name and description, along with descriptions and tests for the model's columns.
+
+For this starter project, the schema file is intended to demonstrate a documented model with column-level tests. When adding a new model, follow the same pattern so that the model and its columns are documented and validated consistently.
+
+### Sources File
+
+The sources file contains a top-level `sources` key and defines the raw source used by the staging model. It includes the source name and description, along with column descriptions and tests.
+
+The source definition also contains additional configuration used by this project, including `schema`, `freshness`, and `meta`. Because the example loads raw data from a public CSV file, the URL for the external data is stored under
+
+```yaml
+meta:
+  external_location
+```
+
+The sources file is specific to the staging layer because this is where raw source data enters the dbt project. Intermediate and mart models are built from upstream dbt models and therefore do not require their own source definitions.
+
+## Intermediate and Mart Models
+
+Intermediate and marts models are defined in the `models/intermediate` and `models/marts` directories. These follow the same general approach as the staging layer. Each contains an example model and supporting schema file that demonstrate how the model can be documented and tested.
+
+The template uses the following prefixes for these layers
+
+1. `int` for *intermediate* models
+2. `fct` for *fact* models in the *marts* layer
+3. `dim` for *dimension* models in the *marts* layer
+
+For example, a mart model may use a name such as
+
+```text
+_fct_<model_name>__records
+```
+
+or
+
+```text
+_dim_<model_name>__records
+```
+
+The `fct` and `dim` prefixes provide a simple way to distinguish the two common types of mart models. In general, fact models contain measurements or events, while dimension models contain descriptive attributes about the entities represented in those facts.
+
+:::{.callout-note collapse="true"}
+## Marts Models - `fct` vs `dim`
+
+The distinction used by this template is
+
+1. `fct`
+   - this stores measurements, metrics, or records of business events
+2. `dim`
+   - this stores descriptive context and attributes about business entities
+
+These conventions are organizational choices rather than requirements imposed by dbt.
+:::
+
+## Building New Models
+
+When adding a new model, use the existing example as a template rather than starting from an empty directory. The basic workflow is
+
+1. Choose the appropriate layer
+   - determine whether the model belongs in staging, intermediate, or marts
+2. Create a descriptive model directory
+   - use lowercase names with underscores
+3. Follow the project's naming convention
+   - use the appropriate layer prefix and a descriptive model name
+4. Create the model SQL file
+   - add the transformation logic for the new model
+5. Add a schema file
+   - document the model and its columns and add the appropriate tests
+6. Define a source when required
+   - staging models that introduce a new raw data source should define that source in a sources file
+7. Build and test the model
+   - use the project's existing make rules to run the dbt workflow and verify that the model builds successfully and its tests pass
+
+For example, if a new source contains customer records, the resulting staging directory might follow the same pattern as the example
+
+```bash
+models/
+└── staging/
+    └── stg_customer/
+        ├── _stg_customer__sources.yml
+        ├── _stg_customer__schema.yml
+        └── _stg_customer__records.sql
+```
+
+The exact contents of the SQL and YAML files will depend on the data being modeled. The important point is to preserve the project's separation between source definitions, model logic, and model documentation/tests.
+
+:::{.callout-tip}
+This structure is intentionally lightweight. As a project grows, additional models, tests, sources, and intermediate transformations can be added without requiring the overall organization of the project to change.
+:::

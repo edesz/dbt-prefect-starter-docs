@@ -1,0 +1,171 @@
+---
+Title: Quick Start
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Quickstart
+
+This quickstart walks you through the minimum steps required to set up the project and run the default dbt workflow.
+
+:::{.callout-note}
+Modifications to default dbt workflow are possible using the [`Makefile`](./08-usage.qmd#run-pixi-tasks-with-make) and [`pyproject.toml` file](./08-usage.qmd#about-python-virtual-environments) in the root directory of this project.
+:::
+
+## Prerequisites {#pre-requisites}
+
+1. Install the prerequisite system packages for the project. See the [Prerequisites](./01-pre-requisites.qmd) section for the complete list of tools to be installed. These tools only need to be installed once and should be available globally on your system.
+2. Setup your [Prefect Cloud](https://www.prefect.io/prefect/cloud#main) account. The Hobby tier is free forever and offers generous resource limits for orchestrating dbt using this project.
+
+## Get Prefect Cloud Connection Details {#prefect-cloud-connection-details}
+
+Get your Prefect API settings (account id and workspace id) from your Prefect Cloud account
+
+1. Log in to your Prefect Cloud account
+2. The URL in your browser's address bar will follow this structure
+   ```text
+   https://app.prefect.cloud/account/[YOUR-ACCOUNT-ID]/workspace/[YOUR-WORKSPACE-ID]/dashboard
+   ```
+
+   Record your account id and workspace id.
+3. Assemble your Prefect Cloud URL, which is the same as the URL above but without the `/dashboard` suffix
+   ```text
+   https://app.prefect.cloud/account/[YOUR-ACCOUNT-ID]/workspace/[YOUR-WORKSPACE-ID]
+   ```
+
+Next, [create a Prefect Cloud API key](https://docs.prefect.io/v3/how-to-guides/cloud/manage-users/api-keys#create-an-api-key)
+
+1. click on your **Profile Avatar or image** in the bottom-left corner
+2. select **Settings** from the menu
+2. click on **API Keys** in the settings sidebar
+3. click the **+ Create API Key** (or *Generate API Key*) button
+4. enter a name for the key and set an expiration date
+5. click **Create** and copy the key
+
+Next, create a file at `~/.prefect/profiles.toml` with your Prefect API key and Prefect API URL from above, with the following contents
+
+```toml
+active = "cloud"
+
+[profiles.default]
+
+[profiles.local]
+
+[profiles.cloud]
+PREFECT_API_KEY = "<your-Prefect-Cloud-api-key-here>"
+PREFECT_API_URL = "<your-Prefect-Cloud-url-here>"
+```
+
+You have have now configured Prefect to use Prefect Cloud with your personal Free Tier account to run flows with dbt commands. This Prefect Cloud setup has to only be performed once.
+
+## Fork the Repository
+
+On [this project's GitHub repository](https://github.com/edesz/dbt_prefect_starter), click the *Fork* button in the top-right corner.
+
+## Clone the Repository
+
+Copy the URL of the forked repository and clone the project
+
+```bash
+git clone https://github.com/<your-github-user-name>/dbt_prefect_starter.git
+```
+
+Change into the project directory
+
+```bash
+cd dbt_prefect_duckdb_starter
+```
+
+All commands are run from this directory.
+
+## (Optional) Forked Repostory Secrets {#forked-repository-secrets}
+
+Configure your Prefect Cloud API settings [as Github Secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#creating-secrets-for-a-repository) on your fork
+
+```text
+PREFECT_API_URL
+```
+
+and
+
+```text
+PREFECT_API_KEY
+```
+
+These will be required to run Prefect flows using Github Actions.
+
+## (Optional) Update the Project Environment
+
+Update the Python packages managed by [Pixi](https://pixi.prefix.dev/latest/)
+
+```bash
+make pixi-upgrade
+```
+
+This updates the project's dependencies and [Pixi lockfile (`pixi.lock`)](https://pixi.prefix.dev/latest/workspace/lock_file/) according to the dependency constraints defined by the project.
+
+## Test the dbt Connection
+
+Run the default `dbt-cmd` rule to verify the dbt connection configuration
+
+```bash
+make dbt-cmd
+```
+
+By default, this runs
+
+```bash
+dbt debug
+```
+
+which checks the dbt project and its configured connection to DuckDB.
+
+## Run the dbt Workflow
+
+Run the complete dbt workflow using Prefect
+
+```bash
+make prefect-dbt
+```
+
+The workflow runs the following dbt commands in order
+
+```bash
+dbt debug
+dbt deps
+dbt run
+dbt test
+dbt docs generate
+```
+
+The project is now set up and the default dbt workflow has been executed.
+
+## View Flow Run on Prefect Cloud
+
+From the Prefect Cloud dashboard, [debug the flow run](https://linen.prefect.io/t/29388579/ulva73b9p-what-s-the-best-approach-to-debug-my-prefect-flows)
+
+1. click on *Flow Runs* in the side bar
+2. click on `dbt_prefect_starter_flow`
+   - this is the [name specified in the flow definition](https://github.com/edesz/dbt_prefect_starter/blob/9764b710d712c9ec0ed88ce98e538613500af0c0/src/prefect_resources.py#L114)
+3. click on an individual flow run to view the operational and status information logged about that run, including
+   - state and status
+     - see the current state such as Running, Completed, or Failed and history
+   - timing
+     - see the start time and total execution duration
+   - parameters
+     - see the exact input parameters passed into the flow run
+   - logs
+      - view the real-time or historical log output captured during execution of the flow
+   - executon graph
+     - view the visual map showing the sequence and status of tasks and upstream dependencies
+   - errors
+     - see any errors that occured during the flow run
+
+Enjoy!

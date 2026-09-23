@@ -1,0 +1,95 @@
+project:
+  type: website
+  output-dir: _site
+  preview:
+    port: 8681
+    browser: false
+    watch-inputs: false
+  render:
+    - index.qmd
+    - "pages/**/*.qmd"
+    - community/CODE_OF_CONDUCT.md
+    - LICENSE.md
+
+website:
+  title: Home
+  back-to-top-navigation: true
+  page-navigation: true
+  open-graph: true
+
+  navbar:
+    title: dbt DuckDB Prefect Starter
+    search: true
+    background: primary
+    tools:
+      - icon: github
+        href: https://github.com/edesz/dbt_prefect_duckdb_starter
+        target: _blank
+
+  page-footer:
+    left:
+      - text: "&#169; 2026 edesz"
+        href: https://github.com/edesz
+        target: _blank
+      - text: "Code of Conduct"
+        href: community/CODE_OF_CONDUCT.md
+    right:
+      - text: License
+        href: LICENSE.md
+      - text: Built with Quarto
+        href: https://quarto.org/
+  
+  sidebar:
+    title: "dbt Starter"
+    logo: pages/images/growtika-8zB4P0eafrs-unsplash.jpg
+    logo-alt: "dbt Starter Image"
+    pinned: true
+    aligned: center
+    style: "docked"
+    search: false
+    collapse: true
+    collapse-level: 2
+    contents:
+      - text: "Welcome"
+        href: index.qmd
+      - text: "Why this project exists"
+        href: pages/06-motivation.qmd
+      - section: Getting Started
+        contents:
+          - text: Pre-Requisites
+            href: pages/01-pre-requisites.qmd
+          - text: Quick Start
+            href: pages/02-quickstart.qmd
+          - text: Directory Structure
+            href: pages/03-directory-structure.qmd
+          - text: Authoring dbt Models
+            href: pages/04-authoring-dbt-models.qmd
+          - text: Document and Test dbt Models
+            href: pages/05-document-and-test-models.qmd
+      - text: Opinions
+        href: pages/07-opinions.qmd
+      - text: Usage
+        href: pages/08-usage.qmd
+      - text: Customisations
+        href: pages/09-customisations.qmd
+      - text: Contributing
+        href: pages/10-contributing.qmd
+      - text: Citation
+        href: pages/11-citation.qmd
+
+format:
+  html:
+    smooth-scroll: true
+    code-overflow: wrap
+    code-fold: false
+    code-link: true
+    section-divs: false
+    toc: true
+    toc-depth: 5
+    toc-expand: true
+    link-external-newwindow: true
+    theme:
+      light: [zephyr]
+      dark: [darkly]
+    mermaid:
+      theme: dark

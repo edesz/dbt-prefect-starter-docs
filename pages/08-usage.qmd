@@ -1,0 +1,395 @@
+---
+Title: Usage
+author:
+  - name: "edesz"
+    url: https://github.com/edesz
+    orcid: "0000-0001-9039-5496"
+    attributes:
+      github: "edesz"
+date: 2026-09-23
+language:
+  title-block-published: "Last Updated"
+---
+
+# Use This Project
+
+This section provides a guide to the most common tasks you can perform with the project, from cloning the repository to configuring the environment and updating its dependencies.
+
+:::{.callout-important}
+## Assumptions
+
+We assume herre that your have installed the [required pre-requisite system packages](./02-quickstart.qmd#pre-requisites) have been installed and that the [Prefect Cloud credentials are stored in `~/.prefect/profiles.toml`](./02-quickstart.qmd#prefect-cloud-connection-details).
+:::
+
+## Fork the Project on Github
+
+Fork the repository to create a personal, independent copy of it on your GitHub account. This gives you full control to modify the code to suit your needs without affecting the original project. This gives you a foundation to build upon rather than starting from scratch.
+
+### (Optional) Set Secrets for Forked Repository
+
+In order to run Prefect flows using Prefect Cloud as part of Github Actions, you will need to configure your forked repository with your Prefect Cloud secrets. To do so, set the following two secrets
+
+```text
+PREFECT_API_URL
+```
+
+and
+
+```text
+PREFECT_API_KEY
+```
+
+See the [Quickstart section for steps to extract these values](./02-quickstart.qmd#get-prefect-cloud-connection-details) from your Prefect Cloud account.
+
+## Cloning the Project
+
+If `git` is installed, then clone the forked repository with the following
+
+```bash
+git clone https://github.com/<your-github-user-name>/dbt_prefect_duckdb_starter.git
+```
+
+This is a standalone dbt project, so there is no additional repository or project directory to navigate. Change into the project's root directory
+
+```bash
+cd dbt_prefect_duckdb_starter
+```
+
+From the project root, the project's `make` rules provide convenient entry points for running dbt commands and workflows. Later, we'll talk more about the `make` rules available to you.
+
+## Set the Time Zone
+
+The project uses the `dbt-expectations` package, which requires a time zone to be specified. The default value can be changed in `dbt_project.yml`
+
+```yaml
+vars:
+  'dbt_date:time_zone': 'America/New_York'
+```
+
+The value should be a time-zone identifier recognized by the [IANA Time Zone Database](https://www.iana.org/time-zones), also known as the tz or zoneinfo database. IANA identifiers generally follow an `Area/Location` format.
+
+Some commonly used values include
+
+1. Global
+   - UTC
+   - GMT
+2. North America
+   - America/New_York
+   - America/Chicago
+   - America/Denver
+   - America/Los_Angeles
+   - America/Phoenix
+   - America/Toronto
+3. Europe
+   - Europe/London
+   - Europe/Paris
+   - Europe/Berlin
+   - Europe/Brussels
+4. Asia
+   - Asia/Hong_Kong
+   - Asia/Tokyo
+   - Asia/Singapore
+   - Asia/Kolkata
+5. Australia
+   - Australia/Sydney
+   - Australia/Melbourne
+
+Prefer canonical IANA identifiers over abbreviations such as `EST`, `CST`, or `PST`. These abbreviations can be ambiguous and may not adequately represent daylight-saving transitions. For example, `CST` can refer to Central Standard Time but also to China Standard Time.
+
+Legacy identifiers such as `US/Eastern` and `US/Pacific` are also best avoided when a canonical identifier such as `America/New_York` or `America/Los_Angeles` is available.
+
+### DuckDB and Time Zones
+
+The project's DuckDB environment supports time-zone functionality through DuckDB's built-in [ICU extension](https://duckdb.org/docs/current/core_extensions/icu). The project also uses DuckDB through Python for running ad-hoc SQL queries.
+
+For the standard project setup, no additional configuration is required beyond changing the `dbt_date:time_zone` value in `dbt_project.yml`. DuckDB's Python integration includes the required functionality, while the DuckDB CLI can automatically load the ICU extension when needed.
+
+## (Optional) Upgrade Python Packages
+
+To update the project's Pixi-managed Python packages, run
+
+```bash
+make pixi-upgrade
+```
+
+This [updates](https://pixi.prefix.dev/latest/reference/cli/pixi/upgrade/) the project's [dependency lockfile](https://pixi.prefix.dev/dev/workspace/lock_file/) and [manifest file](https://pixi.prefix.dev/latest/reference/pixi_manifest/#manifest-discovery) (`pyproject.toml`) according to the package constraints defined by the project. Using Pixi to manage the environment keeps dependency resolution and package versions captured as part of the project rather than relying on packages installed independently on a developer's machine.
+
+Upgrading the manifest file is optional so it is not necessary to run this command.
+
+## About Python Virtual Environments {#about-python-virtual-envs}
+
+As mentioned above, by default, this project uses [Pixi](https://pixi.sh/) to manage its Python environments and dependencies. Pixi is configured through `pyproject.toml`, which is committed to the repository so that the project's environments, dependencies, and tasks are defined alongside the rest of the code.
+
+The `pyproject.toml` file uses three related Pixi concepts
+
+1. [Feature dependencies](https://pixi.prefix.dev/latest/tutorials/multi_environment/#glossary)
+   - these define the Python packages and other dependencies required by a particular area of the project
+   - this project has separate features for dbt, orchestration, and linting
+2. [Environments](https://pixi.prefix.dev/latest/tutorials/multi_environment/#environment)
+   - one or more features can be combined into an environment in Pixi
+   - an environment therefore provides the complete set of dependencies and tasks needed for a particular workflow
+3. [Feature tasks](https://pixi.prefix.dev/latest/tutorials/multi_environment/#running-a-task)
+   - these define commands that can be executed using the dependencies provided by their feature
+   - here, these tasks include dbt commands, Python scripts, and linting commands
+
+Keeping these concerns separate makes the project's environments modular. A feature only needs to declare the dependencies relevant to its own functionality. By comparison, a Pixi environment can combine features when a workflow requires functionality from more than one area.
+
+We'll see how these concepts are used in this project to ensure reproducibility.
+
+### Project Features
+
+The project defines three dbt-related Pixi features
+
+1. `dbt`
+2. `orchestration`
+3. `lint`
+
+The `dbt` feature contains the dependencies required to work with dbt and DuckDB. Because DuckDB is the project's data warehouse, this includes the `duckdb` and `dbt-duckdb` (the dbt adapter) packages.
+
+The `orchestration` feature contains the dependencies required to run the Python script that uses Prefect to orchestrate dbt commands. Its environment also includes the dependencies from the `dbt` feature because the Prefect workflow ultimately executes dbt.
+
+The `lint` feature contains `pre-commit`, which is required to run the project's `dbt-checkpoint` hook. Its environment also includes the dependencies from the `dbt` feature so that the linting workflow has access to the dbt project and its associated tooling.
+
+The environments are named either the same as their corresponding feature or according to the workflow they represent
+
+::: {#tbl-panel tbl-cap-location=bottom}
+| Feature         | Environment  |
+| --------------- | ------------ |
+| `dbt`           | `dbt`        |
+| `orchestration` | `prefectdbt` |
+| `lint`          | `lint`       |
+Relationship between features and environments in Pixi configuration file.
+:::
+
+This gives each workflow a focused environment while allowing environments to compose the dependencies they need from multiple features.
+
+### Pixi Tasks
+
+The environments provide the dependencies, while Pixi tasks provide convenient commands for using them. This project defines tasks for three main workflows.
+
+#### <font color='#ad494a'>Workflow 1 -</font> *dbt*
+
+The `dbt` feature provides two tasks
+
+##### Task 1 - *dbt-cmd*
+
+This task runs an ad-hoc dbt command in the `dbt` environment. The dbt command itself is supplied as an argument. For example, the following runs `dbt test`
+
+```bash
+pixi run dbt-cmd "test"
+```
+
+The corresponding Makefile rule can be used as a shorter entry point
+
+```bash
+make dbt-cmd
+```
+
+The dbt command passed to the task is configured in the Makefile, so the command can be changed there without changing the Pixi task definition.
+
+##### Task 2 - *adhocsql*
+
+This task executes a SQL script against the project's DuckDB database. The SQL file to execute is supplied as an argument
+
+```bash
+pixi run adhocsql "analyses/check_parking_occupancy_records.sql"
+```
+
+The Makefile provides a corresponding entry point
+
+```bash
+make run-adhoc-query
+```
+
+As with `dbt-cmd`, the SQL file used by the Makefile rule can be changed without modifying the underlying Pixi task.
+
+#### <font color='#377eb8'>Workflow 2 -</font> *orchestration*
+
+The `orchestration` feature provides the `prefect-dbt` task. This task runs the Python script responsible for orchestrating dbt commands using Prefect. Because the `prefectdbt` environment combines the `dbt` and `orchestration` features, the workflow has access to both Prefect and dbt.
+
+Multiple dbt commands can be supplied to the task as a comma-separated string. For example
+
+```bash
+pixi run prefect-dbt "debug,deps,run,test,docs generate"
+```
+
+Again, the same workflow can be invoked through the Makefile
+
+```bash
+make prefect-dbt
+```
+
+The sequence of dbt commands used by the Makefile rule can be changed there without modifying the Pixi task itself.
+
+#### <font color='teal'>Workflow 3 -</font> *lint*
+
+The `lint` feature provides the `lint` task, which runs `pre-commit`. The project's pre-commit configuration uses [`dbt-checkpoint` hooks](https://github.com/dbt-checkpoint/dbt-checkpoint#list-of-dbt-checkpoint-hooks) to check aspects of the dbt project's structure and syntax.
+
+The task can be run directly through Pixi
+
+```bash
+pixi run lint
+```
+
+or through the Makefile
+
+```bash
+make lint
+```
+
+### How the Pieces Fit Together
+
+The relationship between Pixi features, environments, and tasks can be summarized as follows
+
+::: {#fig-simple-dbt-flow .column-screen-inset-center style="text-align: center;"}
+```{mermaid}
+flowchart TD
+    F1[dbt Feature]
+    F2[orchestration Feature]
+    F3[lint Feature]
+
+    F1 ==> E1[dbt Environment]
+    F1 ==> E2[prefectdbt Environment]
+    F2 ==> E2
+    F1 ==> E3[lint Environment]
+    F3 ==> E3
+
+    E1 ==> T1(dbt Tasks)
+    E2 ==> T2(Prefect / dbt Tasks)
+    E3 ==> T3(Lint Task)
+```
+Features define reusable pieces, while environments compose those features for specific workflows.
+:::
+
+For example, the `prefectdbt` environment combines the `dbt` and `orchestration` features. This gives the Prefect workflow access to the dependencies and tasks defined by both features, while keeping the dependency definitions themselves separated by purpose.
+
+This structure also means that the same underlying tasks can be accessed through two levels of interface
+
+1. directly with `pixi run` when more control is useful
+2. through the project's `make` rules when a simple, predefined entry point is preferred
+
+## View Available *make* Rules
+
+To view all available `make` rules and their descriptions, run
+
+```bash
+make help
+```
+
+Each rule includes a short description. Rules that run dbt commands execute within a Python virtual environment managed by Pixi and call the corresponding Pixi task defined in `pyproject.toml`.
+
+The following `make` rules provide dbt-related functionality
+
+```bash
+Available rules:
+
+lint                Run lint checks manually
+dbt-cmd             Run ad-hoc dbt command
+prefect-dbt         Run dbt commands with Prefect
+run-adhoc-query     Run ad-hoc SQL queries with DuckDB
+```
+
+## Run Pixi Tasks with *make* {#running-pixi-tasks-with-make}
+
+### Running Ad-Hoc dbt Commands
+
+To run a single dbt command within the project's Pixi-managed Python environment, modify the `dbt-cmd` rule in the `Makefile`. By default, the rule is configured to run `dbt debug`
+
+```bash
+pixi run dbt-cmd "debug"
+```
+
+For example, to run `dbt deps`, change the command to
+
+```bash
+pixi run dbt-cmd "deps"
+```
+
+Then run the `make` rule
+
+```bash
+make dbt-cmd
+```
+
+This provides a convenient way to run individual dbt commands without manually activating the Python environment.
+
+### Using Orchestration
+
+To run one or more dbt commands through Prefect, modify the `prefect-dbt` rule in the `Makefile`. By default, Prefect flow runs the following commands in order with task dependencies as discussed in the [Opinions section](./07-opinions.qmd#prefect-capabilities)
+
+1. [`dbt debug`](https://docs.getdbt.com/reference/commands/debug?version=2)
+2. [`dbt deps`](https://docs.getdbt.com/reference/commands/deps?version=2)
+3. [`dbt run`](https://docs.getdbt.com/reference/commands/run?version=2)
+4. [`dbt test`](https://docs.getdbt.com/reference/commands/test?version=2)
+5. [`dbt docs generate`](https://docs.getdbt.com/reference/commands/cmd-docs?version=2#generate-the-site)
+
+The corresponding Pixi task is
+
+```bash
+pixi run prefect-dbt "debug,deps,run,test,docs generate"
+```
+
+For example, to run `dbt test` followed by `dbt clean`, in which the `test` command must successfully complete, change the command to
+
+```bash
+pixi run prefect-dbt "test,clean"
+```
+
+Then run the `make` rule
+
+```bash
+make prefect-dbt
+```
+
+Prefect executes the specified dbt commands as part of the flow, providing the orchestration layer for their execution.
+
+:::{.callout-tip icon=false}
+#### 💡 Extendability of Prefect Flows
+
+In addition to running dbt commands, the Prefect flow was adapted to also clean up the project folder by removing dbt artifacts when using DuckDB. Here, running the dbt command
+
+```bash
+dbt clean
+```
+
+triggers a Prefect task that cleans up the
+
+1. file-based data warehouse at `local_warehouse.duckdb`
+2. `__pycache__` folder which is automatically generated by Python to store compiled bytecode
+
+This is a simple example of how Prefect, being a general purpose orchestrator, can be used to perform non-dbt tasks that are essential to a dbt project.
+
+In a similar way, the flow can be extended to perform other non-dbt tasks as you may require!
+:::
+
+### Code Linting and Validation
+
+The project uses [`pre-commit`](https://pre-commit.com/) with [`dbt-checkpoint` to run a set of checks](https://github.com/dbt-checkpoint/dbt-checkpoint) against the dbt project. The configured hooks can be modified in `.pre-commit-config.yaml` as needed.
+
+By default, the following [`dbt-checkpoint` hooks](https://github.com/dbt-checkpoint/dbt-checkpoint#list-of-dbt-checkpoint-hooks) are configured
+
+1. [`dbt-parse`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#dbt-parse)
+2. [`dbt-docs-generate`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#dbt-docs-generate)
+3. [`check-model-has-properties-file`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-has-properties-file)
+4. [`check-script-semicolon`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-script-semicolon)
+5. [`check-script-has-no-table-name`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-script-has-no-table-name)
+6. [`check-model-has-all-columns`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-has-all-columns)
+7. [`check-model-columns-have-desc`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-columns-have-desc)
+8. [`check-model-has-tests`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-has-tests)
+9. [`check-model-parents-name-prefix`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-parents-name-prefix)
+10. [`check-model-has-description`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-model-has-description)
+11. [`check-source-has-tests`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-has-tests)
+12. [`check-source-has-tests-by-type`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-has-tests-by-type)
+13. [`check-source-has-freshness`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-has-freshness)
+14. [`check-source-columns-have-desc`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-columns-have-desc)
+15. [`check-source-has-description`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-has-description)
+16. [`check-source-table-has-description`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-source-table-has-description)
+17. [`check-macro-has-description`](https://github.com/dbt-checkpoint/dbt-checkpoint/blob/main/HOOKS.md#check-macro-has-description)
+
+To run the configured checks, use
+
+```bash
+make lint
+```
+
+No changes to the `Makefile` are required. The `lint` rule invokes the corresponding Pixi task, which runs the configured `pre-commit` checks.
