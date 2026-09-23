@@ -1,6 +1,6 @@
 # dbt Prefect Starter Documentation
 
-![Static Badge](https://img.shields.io/badge/MIT-License?style=for-the-badge&label=LICENSE&color=%2326ED46) ![Python](https://img.shields.io/badge/python-%233670A0.svg?style=for-the-badge&logo=python&logoColor=ffdd54) ![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg) ![GitHub stars](https://img.shields.io/github/stars/edesz/dbt_prefect_starter) 
+[![Quarto Publish](https://github.com/edesz/dbt-prefect-starter-docs/actions/workflows/publish.yml/badge.svg)](https://github.com/edesz/dbt-prefect-starter-docs/actions/workflows/publish.yml) ![Static Badge](https://img.shields.io/badge/MIT-License?style=for-the-badge&label=LICENSE&color=%2326ED46) ![Python](https://img.shields.io/badge/python-%233670A0.svg?style=for-the-badge&logo=python&logoColor=ffdd54) ![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg) ![GitHub stars](https://img.shields.io/github/stars/edesz/dbt_prefect_starter) 
 
 This repository creates documentation for the [dbt Prefect starter project](https://github.com/edesz/dbt_prefect_starter) using [Quarto](https://quarto.org/).
 
