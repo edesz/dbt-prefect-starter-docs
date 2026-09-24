@@ -97,7 +97,7 @@ which will trigger the Github Action. All contents are then rendered and publish
     ├── 11-citation.qmd
     └── images
         ├── .gitkeep
-        └── template_logo.png
+        └── growtika-8zB4P0eafrs-unsplash.png
 ```
 
 Note that the following files are identical to the corresponding files from the [dbt Prefect starter repository](https://github.com/edesz/dbt_prefect_starter)
