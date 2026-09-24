@@ -112,16 +112,6 @@ Note that the following files are identical to the corresponding files from the 
 └── Makefile
 ```
 
-### Continuous Integration
-
-```bash
-.
-└── resources
-    └── .github
-        └── workflows
-            └── publish.yml
-```
-
 ### Version Control
 
 ```bash
